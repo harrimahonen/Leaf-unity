@@ -11,7 +11,7 @@ Library/
 /[Bb]uild/
 /[Bb]uilds/
 Assets/AssetStoreTools*
-/.vs/
+/.vs*
 *.pidb.meta
 sysinfo.txt
 
