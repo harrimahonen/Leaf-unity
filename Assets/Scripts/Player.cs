@@ -4,9 +4,9 @@ using System.Collections;
 [RequireComponent(typeof(Controller2D))]
 public class Player : MonoBehaviour
 {
-	//we use these variables for player tracking
-	public GameObject wayPoint;
-	private float timer = 0.5f;
+    //we use these variables for player tracking
+    public GameObject waypoint;
+    private float timer = 0.5f;
 
     // store our jumping variables and movement
     // jumping has different heights
@@ -16,6 +16,7 @@ public class Player : MonoBehaviour
     float accelerationTimeAirborne = .2f;
     float accelerationTimeGrounded = .1f;
     public float moveSpeed = 6;
+    public bool hasWallClimb = false;
 
     // wall jumping and wall sliding variables
     public Vector2 wallJumpClimb;
@@ -43,8 +44,7 @@ public class Player : MonoBehaviour
     Controller2D controller;
 
     Vector2 directionalInput;
-	AttackCube atk;
-
+    AttackCube atk;
 
 
     // assign controller to Controller2D and define gravity and jumping velocity
@@ -57,12 +57,10 @@ public class Player : MonoBehaviour
     // minJumpVelocity 10
     void Start()
     {
-		wayPoint = GameObject.Find("WayPoint");
-
         getInput = GetComponent<PlayerInput>();
         controller = GetComponent<Controller2D>();
         anim = GetComponent<Animator>();
-		atk = GetComponent<AttackCube> ();
+        atk = GameObject.Find("PlayerCharacter/AttackBox").GetComponent<AttackCube>();
         gravity = -(2 * maxJumpHeight) / Mathf.Pow(timeToJumpApex, 2); // negative value
         maxJumpVelocity = Mathf.Abs(gravity) * timeToJumpApex;
         minJumpVelocity = Mathf.Sqrt(2 * Mathf.Abs(gravity) * minJumpHeight);
@@ -76,30 +74,29 @@ public class Player : MonoBehaviour
     void Update()
     {
         CalculateVelocity();
-        HandleWallSliding();
+        // Wall Sliding disabled by default
+        if (hasWallClimb)
+        { 
+            HandleWallSliding();
+        }
 
         controller.Move(velocity * Time.deltaTime, directionalInput);
 
         // handle animations
 
-        // set idle animation character when grounded and no input so given
-        // reset run and jump triggers
-        if (directionalInput.x == 0 && controller.collisions.below )
+        // set idle animation character when grounded and no input
+        if (directionalInput.x == 0 && controller.collisions.below && !atk.IsAttacking())
         {
-            anim.ResetTrigger("Run");
-            anim.ResetTrigger("Jump");
             anim.SetTrigger("Idle");
         }
         //set run animation when input is given, is grounded and has velocity.x
-        if (controller.collisions.below && getInput.directionalInput.x != 0 && velocity.x != 0)
+        if (controller.collisions.below && getInput.directionalInput.x != 0 && velocity.x != 0 && !atk.IsAttacking())
         {
-
             anim.SetTrigger("Run");
-        }        
-        
+        }
+
         // trigger jump animation while airborne
-        // reset run trigger
-        if (!controller.collisions.below)
+        if (!controller.collisions.below && !atk.IsAttacking())
         {
             anim.ResetTrigger("Run");
             anim.SetTrigger("Jump");
@@ -117,19 +114,27 @@ public class Player : MonoBehaviour
             }
         }
 
-		//Updating player position on certain intervals determined by the "timer"
-		if (timer > 0) {
-			timer -= Time.deltaTime;
-		} else {
-			UpdatePosition();
-			timer = 0.5f;
-		}
+        //Updating player position on certain intervals determined by the "timer"
+        if (timer > 0)
+        {
+            timer -= Time.deltaTime;
+        }
+        else
+        {
+
+            timer = 0.5f;
+        }
     }
 
     // set player input in diretionalInput
     public void SetDirectionalInput(Vector2 input)
     {
         directionalInput = input;
+    }
+
+    public Vector2 getDirectionalInput()
+    {
+        return directionalInput;
     }
 
     // implement jump logic here, also while sliding
@@ -139,10 +144,7 @@ public class Player : MonoBehaviour
     // start jumping on normal conditions while key is pressed down
     // jump velocity is maxJumpVelocity while key is down
     // on release we slow the velocity
-	public void Attack()
-	{
-		anim.SetTrigger ("Attack");	
-	}
+
     public void OnJumpInputDown()
     {
         if (wallSliding)
@@ -245,10 +247,4 @@ public class Player : MonoBehaviour
         velocity.x = Mathf.SmoothDamp(velocity.x, targetVelocityX, ref velocityXSmoothing, (controller.collisions.below) ? accelerationTimeGrounded : accelerationTimeAirborne);
         velocity.y += gravity * Time.deltaTime;
     }
-
-
-	//The wayPoint's position will now be the player's current position.
-	void UpdatePosition() {
-		wayPoint.transform.position = transform.position;
-	}
 }

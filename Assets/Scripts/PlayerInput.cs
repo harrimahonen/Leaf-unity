@@ -1,17 +1,23 @@
-﻿using UnityEngine;
-using System.Collections;
+﻿using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.SceneManagement;
 
 [RequireComponent(typeof(Player))]
 public class PlayerInput : MonoBehaviour
 {
+    Scene scene;
     public Vector2 directionalInput;
     Player player;
     public  static bool isAlive = true;
+    AttackCube attacker;
 
     void Start()
     {
-
+        scene = SceneManager.GetActiveScene();
+        Debug.Log(scene.name);
         player = GetComponent<Player>();
+        attacker = GameObject.Find("PlayerCharacter/AttackBox").GetComponent<AttackCube>();
     }
 
     void Update()
@@ -31,12 +37,35 @@ public class PlayerInput : MonoBehaviour
             }
             if (Input.GetKeyDown(KeyCode.J))
             {
-
-                AttackCube.Attack();
-                if (AttackCube.isAttacking())
+                attacker.Attack();
+            }
+            if ((Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift)) && Input.GetKeyDown(KeyCode.L))
+            {
+                // CTRL + L
+                if (scene.name == "mainscene")
                 {
-                    player.Attack();
+                    SceneManager.LoadScene(sceneName: "demoscene");
                 }
+                else if (scene.name == "demoscene")
+                {
+                    SceneManager.LoadScene(sceneName: "mainscene");
+                }
+            }
+        }
+    }
+    void OnGUI()
+    {
+        Event e = Event.current;
+        if (e.type == EventType.KeyDown && e.control && e.keyCode == KeyCode.L)
+        {
+            // CTRL + L
+            if (scene.name == "mainscene")
+            {
+                SceneManager.LoadScene(sceneName: "demoscene");
+            }
+            else if (scene.name == "demoscene")
+            {
+                SceneManager.LoadScene(sceneName: "mainscene");
             }
         }
     }

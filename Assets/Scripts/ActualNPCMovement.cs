@@ -8,20 +8,40 @@ public class ActualNPCMovement : MonoBehaviour {
 	float jumpTimer = 1f;
 	public float maxJumpTimer = 1f;
 	public float jumpHeight = 3f;
-	public string wantedMoveType; //Select "WallToWallMove", "TimedMovement", "JumpingMovement" or "FollowPlayer"
+
+	//Select "WallToWallMove", "TimedMovement", "JumpingMovement", "FollowPlayer" or "AttackPlayer"
+	public string wantedMoveType;
 	Rigidbody2D rb2D;
 
-	private GameObject wayPoint;
-	private Vector3 wayPointPos;
+	private GameObject player;
+	private Vector3 playerPos;
+
+	Character npc;
+	private Animator anim;
+	private Vector2 currentPosition;
+	private Vector2 lastPosition;
+	private bool isMoving;
+	EdgeCollider2D edgeCollider;
+	private SpriteRenderer rend;
+	private PolygonCollider2D levelBorder;
+	private BoxCollider2D groundCollider;
+	private bool inAir;
 
 	// Use this for initialization
 	void Start () {
 		rb2D = GetComponent<Rigidbody2D> ();
-		wayPoint = GameObject.Find("WayPoint");
+		player = GameObject.Find("PlayerCharacter");
+		anim = GetComponent<Animator> ();
+		edgeCollider = GetComponent<EdgeCollider2D> ();
+		rend = GetComponent<SpriteRenderer> ();
+		levelBorder = GameObject.FindGameObjectWithTag("LevelBorder").GetComponent<PolygonCollider2D>();
+		groundCollider = transform.GetChild (2).GetComponent<BoxCollider2D> ();
 	}
 	
 	// Update is called once per frame
 	void Update () {
+		
+		//choosing move type
 		if (wantedMoveType.Equals("WallToWallMove")) {
 			WallToWallMove();
 		} else if (wantedMoveType.Equals("TimedMovement")) {
@@ -30,6 +50,35 @@ public class ActualNPCMovement : MonoBehaviour {
 			JumpingMovement();
 		} else if (wantedMoveType.Equals("FollowPlayer")) {
 			FollowPlayer();
+		} else if (wantedMoveType.Equals("AttackPlayer")) {
+			AttackPlayer();
+		}
+
+		//checking if the npc is in air for the animator
+		if (wantedMoveType.Equals ("FollowPlayer") || wantedMoveType.Equals ("JumpingMovement") || wantedMoveType.Equals("AttackPlayer")) {
+			if (!groundCollider.IsTouching(levelBorder)) {
+				inAir = true;
+			} else {
+				inAir = false;
+			}
+		}
+		anim.SetBool("InAir", inAir);
+
+		//checking wether the npc is moving
+		currentPosition = transform.position;
+		if (currentPosition == lastPosition) {
+			isMoving = false;
+		} else {
+			isMoving = true;
+		}
+		anim.SetBool("IsMoving", isMoving);
+		lastPosition = currentPosition;
+
+		//flipping the sprite when the npc changes direction
+		if (player.transform.position.x < transform.position.x) {
+			rend.flipX = false;
+		} else {
+			rend.flipX = true;
 		}
 
 	}
@@ -39,16 +88,18 @@ public class ActualNPCMovement : MonoBehaviour {
 		switch (col.tag) {
 
 			case "LevelBorder":
-				if (wantedMoveType.Equals("WallToWallMove") || wantedMoveType.Equals("TimedMovement") || wantedMoveType.Equals("JumpingMovement")) {
-					if (speed > 0) {
-						speed = -1f;
-					} else if (speed < 0) {
-						speed = 1f;
+			if (edgeCollider.IsTouching(col)) {	
+					if (wantedMoveType.Equals("WallToWallMove") || wantedMoveType.Equals("TimedMovement") || wantedMoveType.Equals("JumpingMovement")) {
+						if (speed > 0) {
+							speed = -1f;
+						} else if (speed < 0) {
+							speed = 1f;
+						}
+					} else if (wantedMoveType.Equals("FollowPlayer") || wantedMoveType.Equals("AttackPlayer")) {
+						rb2D.AddForce (new Vector2 (0f, jumpHeight * 100f));
+						rb2D.gravityScale = 1;
 					}
-				} else if (wantedMoveType.Equals("FollowPlayer")) {
-					rb2D.AddForce (new Vector2 (0f, jumpHeight * 100f));
-					rb2D.gravityScale = 1;
-				}
+			}	
 			break;
 
 		}
@@ -86,10 +137,19 @@ public class ActualNPCMovement : MonoBehaviour {
 		jumpTimer -= Time.deltaTime;
 	}
 
-	//Follows the player in simple surface
-	//Ability to jump while following next???
+	//npc follows the player
 	void FollowPlayer() {
-		wayPointPos = new Vector3(wayPoint.transform.position.x, transform.position.y, 0);
-		transform.position = Vector3.MoveTowards(transform.position, wayPointPos, speed * Time.deltaTime);
+		playerPos = new Vector3(player.transform.position.x, transform.position.y, 0);
+		transform.position = Vector3.MoveTowards(transform.position, playerPos, speed * Time.deltaTime);
+	}
+
+	void AttackPlayer() {
+		FollowPlayer();
+
+		if (transform.position.x > playerPos.x && transform.position.x - playerPos.x <= 2f/*insert attack range here*/) {
+			//Attack left
+		} else if (transform.position.x < playerPos.x && playerPos.x - transform.position.x <= 2f/*insert attack range here*/) {
+			//Attack right
+		}
 	}
 }

@@ -10,6 +10,9 @@ public class Controller2D : RaycastController
     public CollisionInfo collisions; // this struct contains all of our collisions info
     [HideInInspector]
     public Vector2 playerInput;
+    Character gameChar;
+    GameObject waypoint;
+    Player player;
 
 
     // inherit parent Start() and override with additional code
@@ -17,7 +20,10 @@ public class Controller2D : RaycastController
     public override void Start()
     {
         base.Start();
+        player = GetComponent<Player>();
+        gameChar = GetComponent<Character>();
         sprite = GetComponent<SpriteRenderer>();
+        waypoint = GameObject.Find("Waypoints");
         collisions.faceDir = 1;
 
     }
@@ -35,7 +41,7 @@ public class Controller2D : RaycastController
     {
         
         UpdateRaycastOrigins();  // update the position of character and raycast location everytime we move
-
+        
         collisions.Reset(); // reset the collisioninfo when character is about to move
         collisions.moveAmountOld = moveAmount; // store this for later use when moving in slope
         playerInput = input; // store this for later use
@@ -64,11 +70,13 @@ public class Controller2D : RaycastController
         }
 
         //flip characters sprite according to facing direction
-        if (collisions.faceDir != 0)
+        if (player.getDirectionalInput().x != 0)
         {
-            sprite.flipX = (collisions.faceDir == -1) ? false : true;
+            sprite.flipX = (player.getDirectionalInput().x == -1) ? false : true;
 
         }
+
+
 
         // after all collisions are handled, we get final moveAmount and translate our position accordingly
         transform.Translate(moveAmount);
@@ -88,20 +96,18 @@ public class Controller2D : RaycastController
         float directionX = collisions.faceDir; 
         float rayLength = Mathf.Abs(moveAmount.x) + skinWidth; // rays casted by move amount's length
 
-        // call this if movement is really small
         if (Mathf.Abs(moveAmount.x) < skinWidth)
         {
             rayLength = 2 * skinWidth; // minimum rayLength
         }
 
-        // if horizontal rays (starting from bottom left or right) encounter an obstacle, hit detection is triggered
+        // if horizontal rays (starting from bottom left or right) encounter an obstacle, hit detection info is generated
         for (int i = 0; i < horizontalRayCount; i++)
         {
             
             Vector2 rayOrigin = (directionX == -1) ? raycastOrigins.bottomLeft : raycastOrigins.bottomRight; // we check our direction and cast rays facing that way with if-conditions
             rayOrigin += Vector2.up * (horizontalRaySpacing * i); // move the raycasts vector up evenly each iteration
 
-            // Raycast shoot starts here
             // Shoot raycasts from rayOrigin height, to facing direction, with movement length and layer mask
             RaycastHit2D hit = Physics2D.Raycast(rayOrigin, Vector2.right * directionX, rayLength, collisionMask);
             
@@ -112,12 +118,34 @@ public class Controller2D : RaycastController
             // raycast hits obstacle - handle it
             if (hit)
             {
-                // we are at obstacle, nothing to do, can't move
+                // we are at obstacle, skip to next ray, also this fixes bugs with moving platforms
                 if (hit.distance == 0)
                 {
                     continue;
                 }
+                //Deadly tag preset, kill character
+                if (hit.collider.tag == "Deadly" && PlayerInput.isAlive)
+                {
+                    gameChar.ChangeHP(-gameChar.HealthPoints);
+                }
 
+                //Deadly tag preset, damage character by 1 hp
+                if (hit.collider.tag == "Damage")
+                {
+                    gameChar.ChangeHP(-1);
+                }
+                //If we collide with Waypoint tagged collider, assign new respawn location for player, also let player move through it
+                if (hit.collider.tag == "Waypoint")
+                {
+                    GameObject wpp = hit.transform.gameObject; // get object we hit
+                    Vector3 wp;
+                    wp = wpp.transform.position; // get objects position
+                    if (gameChar.spawnPoint != wp)
+                    {
+                        gameChar.spawnPoint = wp; // update position as players new spawn
+                    }
+                    continue;
+                }
 
                 float slopeAngle = Vector2.Angle(hit.normal, Vector2.up); // character hits an angle, get angle
                 
@@ -191,16 +219,28 @@ public class Controller2D : RaycastController
             // hit detected 
             if (hit)
             {
+                //Deadly tag preset, kill character
+                if (hit.collider.tag == "Deadly" && PlayerInput.isAlive)
+                {
+                    gameChar.ChangeHP(-gameChar.HealthPoints);
+                }
+
+                //Deadly tag preset, damage character by 1 hp
+                if (hit.collider.tag == "Damage")
+                {
+                    gameChar.ChangeHP(-1);
+                }
+
                 // check for tag Through, it will let player to jump from beneath and dropdown from the platform
                 if (hit.collider.tag == "Through")
                 {
-                    // we are jumping to the platform, when distance is zero skip to next iteration
+                    // skip to next ray, fixes a bug with moving platform and player position
                     if (directionY == 1 || hit.distance == 0)
                     {
                         continue;
                     }
 
-                    // same as above but while falling down
+                    // let player be inside obstacle while true
                     if (collisions.fallingThroughPlatform)
                     {
                         continue;
@@ -213,6 +253,18 @@ public class Controller2D : RaycastController
                         Invoke("ResetFallingThroughPlatform", .5f);
                         continue;
                     }
+                }
+                //If we collide with Waypoint tagged collider, assign new respawn location for player, also let player move through it
+                if (hit.collider.tag == "Waypoint")
+                {
+                    GameObject wpp = hit.transform.gameObject; // get object we hit
+                    Vector3 wp;
+                    wp = wpp.transform.position; // get objects position
+                    if (gameChar.spawnPoint != wp)
+                    {
+                        gameChar.spawnPoint = wp; // update position as players new spawn
+                    }
+                    continue;
                 }
                 // movement vertically and rayLength updated
                 moveAmount.y = (hit.distance - skinWidth) * directionY;

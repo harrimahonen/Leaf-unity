@@ -5,7 +5,20 @@ Temp/
 Obj/
 UnityGenerated/
 Library/
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
 Assets/AssetStoreTools*
+/.vs/
+*.pidb.meta
+sysinfo.txt
+
+
+# Builds
+*.apk
+*.unitypackage
 
 # ===================================== #
 # Visual Studio / MonoDevelop generated #
